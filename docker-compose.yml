@@ -1,0 +1,89 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# VitalLoop — local infrastructure dependencies only.
+# Application containers are NOT defined here; run each service with your IDE
+# or `mvn spring-boot:run` during development.
+# ---------------------------------------------------------------------------
+
+networks:
+  vitalloop-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+
+services:
+
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
+  postgres:
+    # Pinned for reproducibility (postgres:16 -> 16.14). Keep digest in sync if bumped.
+    image: "postgres:16.14@sha256:287eced1f33b59ed265ed13a60d3680dd7646d70c4dc0e785f59a470ebc03eeb"
+    container_name: vitalloop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - vitalloop-net
+
+  # ── Google Cloud Pub/Sub Emulator ─────────────────────────────────────────
+  pubsub-emulator:
+    # Pinned for reproducibility. MUST stay in sync with the Testcontainers
+    # emulator image in PubSubEndToEndIntegrationTest.
+    image: "gcr.io/google.com/cloudsdktool/google-cloud-cli:574.0.0@sha256:12d42ee2c22a4ed7d551654c88b04648626319cd3999117c6b32b166bbe5cbc8"
+    container_name: vitalloop-pubsub
+    restart: unless-stopped
+    command: >
+      gcloud beta emulators pubsub start
+        --project=${PUBSUB_PROJECT_ID:-vitalloop-local}
+        --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8085 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - vitalloop-net
+
+  # ── HAPI FHIR R4 Server ────────────────────────────────────────────────────
+  # Local stand-in for the GCP Cloud Healthcare API FHIR store.
+  # Mapped to host port 8090 to avoid conflicting with Spring Boot services
+  # that default to 8080.
+  hapi-fhir:
+    # Pinned for reproducibility. The Tomcat variant is required: the healthcheck
+    # below runs curl via /bin/sh, which the (now distroless) plain `latest`
+    # image no longer ships. v8.10.0-2-tomcat == latest-tomcat at pin time.
+    image: "hapiproject/hapi:v8.10.0-2-tomcat@sha256:5269d85ce57d00b8d0f2428319f7656a96676efd23590de67e97cfc106fc05c7"
+    container_name: vitalloop-fhir
+    restart: unless-stopped
+    environment:
+      hapi.fhir.fhir_version: R4
+      hapi.fhir.allow_contains_searches: "true"
+      hapi.fhir.allow_multiple_delete: "true"
+      hapi.fhir.reuse_cached_search_results_millis: "1000"
+    ports:
+      - "8090:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/fhir/metadata || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - vitalloop-net
