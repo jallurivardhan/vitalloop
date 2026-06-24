@@ -1,0 +1,27 @@
+# CODEOWNERS — default reviewers for pull requests.
+# Replace @your-org/maintainers with real GitHub team or user handles.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+*                               @your-org/maintainers
+
+# Infrastructure and CI
+infra/                          @your-org/platform
+.github/                        @your-org/platform
+docker-compose.yml              @your-org/platform
+Makefile                        @your-org/platform
+
+# Documentation
+docs/                           @your-org/maintainers
+*.md                            @your-org/maintainers
+
+# Service-specific owners (add as teams are formed)
+services/ingestion-service/     @your-org/backend
+services/patient-service/       @your-org/backend
+services/triage-agent-service/  @your-org/ai
+services/notification-service/  @your-org/backend
+services/clinician-bff/         @your-org/backend
+
+# Frontend
+web/                            @your-org/frontend
+mobile/                         @your-org/frontend

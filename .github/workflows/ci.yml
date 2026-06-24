@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B verify
+
+  integration:
+    name: Integration Tests (Docker)
+    runs-on: ubuntu-latest
+    # GitHub-hosted Ubuntu runners ship with a running Docker daemon, which
+    # Testcontainers uses to start the Pub/Sub emulator. This job is separate
+    # from "build" so the default build stays fast and Docker-free for
+    # contributors; the publish->consume path is guarded only here.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run integration-tagged tests
+        # -Pintegration flips the Surefire gating to run ONLY @Tag("integration")
+        # tests; -am builds the upstream contracts module in the same reactor.
+        run: mvn -B -Pintegration -pl services/triage-agent-service -am test
