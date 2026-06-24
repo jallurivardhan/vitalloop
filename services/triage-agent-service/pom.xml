@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.vitalloop</groupId>
+    <artifactId>vitalloop-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>triage-agent-service</artifactId>
+  <name>VitalLoop :: Triage Agent Service</name>
+  <description>
+    Subscribes to vitals.reading.received events and runs the triage pipeline
+    (rule-based by default; ADK/Gemini gated). Ports-and-adapters architecture.
+  </description>
+
+  <properties>
+    <google-adk.version>0.5.0</google-adk.version>
+    <!-- Test gating (overridden by the "integration" profile below). The default
+         build runs every test EXCEPT those tagged "integration", so it needs no
+         Docker or cloud credentials. -->
+    <test.groups></test.groups>
+    <test.excludedGroups>integration</test.excludedGroups>
+  </properties>
+
+  <dependencies>
+    <!-- Web server so the Actuator health/liveness/readiness probes are exposed
+         over HTTP on the configured port (8082); also provides Jackson + JSR-310
+         and an autoconfigured ObjectMapper for event (de)serialization. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
+    </dependency>
+
+    <!-- Google Agent Development Kit (ADK) — used only by the gated ADK engine. -->
+    <dependency>
+      <groupId>com.google.adk</groupId>
+      <artifactId>google-adk</artifactId>
+      <version>${google-adk.version}</version>
+    </dependency>
+
+    <!-- Shared wire contracts. -->
+    <dependency>
+      <groupId>io.vitalloop</groupId>
+      <artifactId>contracts</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Testcontainers (version managed by the Spring Boot BOM) — used only by
+         the @Tag("integration") end-to-end test, which is excluded from the
+         default build. The test classpath needs it for compilation, but no
+         container is started unless the integration tests are run. -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>-XX:+EnableDynamicAgentLoading -Dnet.bytebuddy.experimental=true</argLine>
+          <!-- Integration tests (live Vertex AI, Testcontainers Pub/Sub) are
+               tagged "integration" and excluded by default so the build is
+               hermetic and needs no Docker/credentials. The "integration"
+               profile flips these via properties. -->
+          <groups>${test.groups}</groups>
+          <excludedGroups>${test.excludedGroups}</excludedGroups>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Opt-in profile that runs ONLY the integration-tagged tests (requires
+         Docker for the Testcontainers Pub/Sub emulator). Activated explicitly
+         with `mvn -Pintegration ...`; it does not affect the default build. -->
+    <profile>
+      <id>integration</id>
+      <properties>
+        <test.groups>integration</test.groups>
+        <test.excludedGroups></test.excludedGroups>
+      </properties>
+    </profile>
+  </profiles>
+</project>

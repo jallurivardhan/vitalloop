@@ -1,0 +1,60 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: triage-agent-service
+  cloud:
+    gcp:
+      project-id: ${PUBSUB_PROJECT_ID:vitalloop-local}
+      pubsub:
+        # When set, Spring Cloud GCP talks to the emulator with no credentials,
+        # so the context loads without GCP auth (build/CI never connect).
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8085}
+
+# ── VitalLoop configuration ─────────────────────────────────────────────────
+vitalloop:
+  pubsub:
+    topic: vitals-reading-received
+    subscription: vitals-reading-received-sub
+  triage:
+    # rule-based (default; no GCP needed) or adk (Gemini on Vertex AI; gated).
+    engine: rule-based
+    model: gemini-2.5-flash
+
+# To run the ADK engine set engine=adk and export:
+#   GOOGLE_GENAI_USE_VERTEXAI=true
+#   GOOGLE_CLOUD_PROJECT=<your-gcp-project-id>
+#   GOOGLE_CLOUD_LOCATION=<your-vertex-region>
+# (gcloud auth application-default login). Using Vertex AI incurs cost.
+
+# ── Observability (Spring Boot Actuator) ────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: VitalLoop triage agent service
+
+# ── Structured (JSON) console logging — Spring Boot 3.4 native support ───────
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO
+    com.vitalloop: INFO
