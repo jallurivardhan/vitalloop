@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.vitalloop</groupId>
+    <artifactId>vitalloop-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>ingestion-service</artifactId>
+  <name>VitalLoop :: Ingestion Service</name>
+  <description>
+    Inbound vital-sign ingestion service. Validates readings, publishes a
+    vitals.reading.received event to Pub/Sub, and returns 202 Accepted. Built
+    with a ports-and-adapters (hexagonal) architecture.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
+    </dependency>
+
+    <!-- Shared wire contracts (event published downstream). -->
+    <dependency>
+      <groupId>io.vitalloop</groupId>
+      <artifactId>contracts</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+
+      <!-- Spotless execution (google-java-format) is inherited from the
+           parent pluginManagement and bound to the verify phase. -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+      </plugin>
+
+      <!-- Test JVM flags: required so Mockito/ByteBuddy can self-attach and
+           operate on newer JDKs without warnings or failures. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>-XX:+EnableDynamicAgentLoading -Dnet.bytebuddy.experimental=true</argLine>
+          <!-- Tests tagged "integration" (e.g. live Vertex AI calls) are
+               excluded by default so the build is hermetic and CI-safe. -->
+          <excludedGroups>integration</excludedGroups>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

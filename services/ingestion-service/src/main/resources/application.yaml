@@ -1,0 +1,53 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: ingestion-service
+  cloud:
+    gcp:
+      project-id: ${PUBSUB_PROJECT_ID:vitalloop-local}
+      pubsub:
+        # When set, Spring Cloud GCP talks to the emulator with no credentials,
+        # so the context loads without GCP auth (build/CI never connect).
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8085}
+
+# ── Observability (Spring Boot Actuator) ────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true          # exposes liveness & readiness probe groups
+      show-details: when_authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: VitalLoop ingestion service
+
+# ── VitalLoop configuration ─────────────────────────────────────────────────
+vitalloop:
+  pubsub:
+    # Topic the accepted-reading event is published to.
+    topic: vitals-reading-received
+
+# ── Structured (JSON) console logging — Spring Boot 3.4 native support ───────
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO
+    com.vitalloop: INFO
