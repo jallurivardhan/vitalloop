@@ -1,6 +1,6 @@
 # VitalLoop
 
-[![CI](https://github.com/your-org/vitalloop/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/vitalloop/actions/workflows/ci.yml)
+[![CI](https://github.com/jallurivardhan/vitalloop/actions/workflows/ci.yml/badge.svg)](https://github.com/jallurivardhan/vitalloop/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-work%20in%20progress-yellow.svg)](#status)
 
@@ -83,7 +83,7 @@ Five microservices communicate exclusively over **Pub/Sub topics** (no synchrono
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/your-org/vitalloop.git
+git clone https://github.com/jallurivardhan/vitalloop.git
 cd vitalloop
 
 # 2. Create your local environment file
